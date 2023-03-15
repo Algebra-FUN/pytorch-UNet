@@ -1,14 +1,13 @@
 import os
 
-import torch.optim as optim
-
+from torch import nn, optim
 from functools import partial
 from argparse import ArgumentParser
 
 from unet.unet import UNet2D
 from unet.model import Model
 from unet.utils import MetricList
-from unet.metrics import jaccard_index, f1_score, LogNLLLoss
+from unet.metrics import f1_score, LogNLLLoss
 from unet.dataset import JointTransform2D, ImageToImage2D, Image2D
 
 parser = ArgumentParser()
@@ -20,8 +19,8 @@ parser.add_argument('--in_channels', default=3, type=int)
 parser.add_argument('--out_channels', default=2, type=int)
 parser.add_argument('--depth', default=5, type=int)
 parser.add_argument('--width', default=32, type=int)
-parser.add_argument('--epochs', default=100, type=int)
-parser.add_argument('--batch_size', default=1, type=int)
+parser.add_argument('--epochs', default=50, type=int)
+parser.add_argument('--batch_size', default=5, type=int)
 parser.add_argument('--save_freq', default=0, type=int)
 parser.add_argument('--save_model', default=0, type=int)
 parser.add_argument('--model_name', type=str, default='model')
@@ -34,8 +33,10 @@ if args.crop is not None:
 else:
     crop = None
 
-tf_train = JointTransform2D(crop=crop, p_flip=0.5, color_jitter_params=None, long_mask=True)
-tf_val = JointTransform2D(crop=crop, p_flip=0, color_jitter_params=None, long_mask=True)
+tf_train = JointTransform2D(crop=crop, p_flip=0.5,
+                            color_jitter_params=None, long_mask=True)
+tf_val = JointTransform2D(
+    crop=crop, p_flip=0, color_jitter_params=None, long_mask=True)
 train_dataset = ImageToImage2D(args.train_dataset, tf_val)
 val_dataset = ImageToImage2D(args.val_dataset, tf_val)
 predict_dataset = Image2D(args.val_dataset)
@@ -49,8 +50,7 @@ results_folder = os.path.join(args.checkpoint_path, args.model_name)
 if not os.path.exists(results_folder):
     os.makedirs(results_folder)
 
-metric_list = MetricList({'jaccard': partial(jaccard_index),
-                          'f1': partial(f1_score)})
+metric_list = MetricList({'f1': partial(f1_score)})
 
 model = Model(unet, loss, optimizer, results_folder, device=args.device)
 

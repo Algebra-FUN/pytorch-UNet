@@ -121,7 +121,10 @@ class ImageToImage2D(Dataset):
         self.dataset_path = dataset_path
         self.input_path = os.path.join(dataset_path, 'images')
         self.output_path = os.path.join(dataset_path, 'masks')
-        self.images_list = os.listdir(self.input_path)
+        self.images_list = sorted(os.listdir(self.input_path))
+        self.masks_list = sorted(os.listdir(self.output_path))
+        print(self.images_list)
+        print(self.masks_list)
         self.one_hot_mask = one_hot_mask
 
         if joint_transform:
@@ -135,22 +138,27 @@ class ImageToImage2D(Dataset):
 
     def __getitem__(self, idx):
         image_filename = self.images_list[idx]
+        mask_filename = self.masks_list[idx]
         # read image
         image = io.imread(os.path.join(self.input_path, image_filename))
         # read mask image
-        mask = io.imread(os.path.join(self.output_path, image_filename))
+        mask = io.imread(os.path.join(self.output_path, mask_filename))
 
         # correct dimensions if needed
         image, mask = correct_dims(image, mask)
+
+        mask[mask==255] = 1
 
         if self.joint_transform:
             image, mask = self.joint_transform(image, mask)
 
         if self.one_hot_mask:
             assert self.one_hot_mask > 0, 'one_hot_mask must be nonnegative'
-            mask = torch.zeros((self.one_hot_mask, mask.shape[1], mask.shape[2])).scatter_(0, mask.long(), 1)
+            mask[mask==255] = 1
+            mask = mask[None,...]
+            mask = torch.zeros((self.one_hot_mask, mask.shape[1], mask.shape[2])).scatter_(0, mask, 1)
 
-        return image, mask, image_filename
+        return image, mask
 
 
 class Image2D(Dataset):
